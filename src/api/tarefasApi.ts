@@ -6,7 +6,7 @@ import type {
   TarefaUpdateInput,
 } from '../types/tarefa';
 
-const BASE_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:5070';
+const BASE_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
 
 export class ApiError extends Error {
   status: number;
@@ -25,6 +25,7 @@ export function mensagemDeErro(erro: unknown): string {
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 60000,
 });
 
 api.interceptors.response.use(

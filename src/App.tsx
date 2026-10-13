@@ -1,5 +1,5 @@
-import { PlusOutlined } from '@ant-design/icons';
-import { Alert, App as AntApp, Button, Flex, Layout, Typography } from 'antd';
+import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { Alert, App as AntApp, Button, Flex, Input, Layout, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { FiltroStatus, type Filtro } from './components/FiltroStatus';
 import {
@@ -10,6 +10,7 @@ import { ModalExclusao } from './components/ModalExclusao';
 import { TabelaTarefas } from './components/TabelaTarefas';
 import { useTarefas } from './hooks/useTarefas';
 import type { StatusTarefa, Tarefa } from './types/tarefa';
+import { normalizarTexto } from './utils/normalizarTexto';
 
 const LARGURA_MAXIMA = 1040;
 
@@ -27,6 +28,7 @@ export default function App() {
   } = useTarefas();
 
   const [filtro, setFiltro] = useState<Filtro>('Todas');
+  const [busca, setBusca] = useState('');
 
   const [formulario, setFormulario] = useState<{
     aberto: boolean;
@@ -39,9 +41,22 @@ export default function App() {
     tarefa: Tarefa | null;
   }>({ aberta: false, tarefa: null });
 
+  // Filtro de texto
+  const correspondentes = useMemo(() => {
+    const termo = normalizarTexto(busca.trim());
+    if (!termo) return tarefas;
+    return tarefas.filter((t) =>
+      normalizarTexto(`${t.titulo} ${t.descricao ?? ''}`).includes(termo),
+    );
+  }, [tarefas, busca]);
+
+  // Filtro de status
   const visiveis = useMemo(
-    () => (filtro === 'Todas' ? tarefas : tarefas.filter((t) => t.status === filtro)),
-    [tarefas, filtro],
+    () =>
+      filtro === 'Todas'
+        ? correspondentes
+        : correspondentes.filter((t) => t.status === filtro),
+    [correspondentes, filtro],
   );
 
   function abrirFormulario(tarefa: Tarefa | null) {
@@ -81,7 +96,9 @@ export default function App() {
       ? 'Não foi possível carregar as tarefas.'
       : tarefas.length === 0
         ? 'Nenhuma tarefa cadastrada. Clique em Nova tarefa para criar a primeira.'
-        : 'Nenhuma tarefa com este status.';
+        : busca.trim()
+          ? 'Nenhuma tarefa encontrada para a busca.'
+          : 'Nenhuma tarefa com este status.';
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -100,7 +117,7 @@ export default function App() {
         style={{ width: '100%', maxWidth: LARGURA_MAXIMA, margin: '0 auto', padding: 24 }}
       >
         <Flex vertical gap={16}>
-          <FiltroStatus tarefas={tarefas} filtro={filtro} onChange={setFiltro} />
+          <FiltroStatus tarefas={correspondentes} filtro={filtro} onChange={setFiltro} />
 
           {erro && (
             <Alert
@@ -115,17 +132,23 @@ export default function App() {
             />
           )}
 
-          <Flex justify="space-between" align="center">
+          <Flex justify="space-between" align="center" gap={12} wrap>
             <Typography.Title level={5} style={{ margin: 0 }}>
               {visiveis.length === 1 ? '1 tarefa' : `${visiveis.length} tarefas`}
             </Typography.Title>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => abrirFormulario(null)}
-            >
-              Nova tarefa
-            </Button>
+            <Flex gap={12} wrap>
+              <Input
+                allowClear
+                prefix={<SearchOutlined />}
+                placeholder="Buscar por título ou descrição"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                style={{ width: 280 }}
+              />
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirFormulario(null)}>
+                Nova tarefa
+              </Button>
+            </Flex>
           </Flex>
 
           <TabelaTarefas
